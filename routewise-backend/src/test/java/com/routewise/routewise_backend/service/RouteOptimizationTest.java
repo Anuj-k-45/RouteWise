@@ -1,17 +1,18 @@
-
 package com.routewise.routewise_backend.service;
-
-import com.routewise.routewise_backend.model.DeliveryPoint;
-import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+
+import com.routewise.routewise_backend.model.DeliveryPoint;
 
 class RouteOptimizationTest {
 
         @Test
-        void shouldGenerateAndMeasureRoute() {
+        void shouldGenerateAndMeasureOptimalRoute() {
 
                 DeliveryPoint depot = new DeliveryPoint(
                                 "DEPOT", "Warehouse", 22.5726, 88.3639);
@@ -33,56 +34,56 @@ class RouteOptimizationTest {
                 DistanceMatrix distanceMatrix = new DistanceMatrix(
                                 points, distanceCalculator);
 
-                NearestNeighborSolver nearestNeighborSolver = new NearestNeighborSolver();
+                HamiltonianCycleSolver solver = new HamiltonianCycleSolver();
 
-                List<DeliveryPoint> initialRoute = nearestNeighborSolver.solve(points, distanceMatrix);
+                List<DeliveryPoint> optimizedRoute = solver.solve(
+                                points, distanceMatrix);
 
                 RouteDistanceCalculator routeCalculator = new RouteDistanceCalculator();
-
-                double initialDistance = routeCalculator.calculateTotalDistance(
-                                initialRoute, distanceMatrix, points);
-
-                TwoOptSolver twoOptSolver = new TwoOptSolver();
-
-                List<DeliveryPoint> optimizedRoute = twoOptSolver.improveRoute(
-                                initialRoute, distanceMatrix, points);
 
                 double optimizedDistance = routeCalculator.calculateTotalDistance(
                                 optimizedRoute, distanceMatrix, points);
 
-                System.out.println("\n--- Nearest Neighbor Result ---");
-
-                for (DeliveryPoint point : initialRoute) {
-                        System.out.println(point.getName());
-                }
-
-                System.out.printf(
-                                "Initial distance: %.2f km%n",
-                                initialDistance);
-
-                System.out.println("\n--- 2-opt Result ---");
+                System.out.println("\n--- Held-Karp Optimal TSP Route ---");
 
                 for (DeliveryPoint point : optimizedRoute) {
                         System.out.println(point.getName());
                 }
 
                 System.out.printf(
-                                "Optimized distance: %.2f km%n",
+                                "Optimal distance: %.2f km%n",
                                 optimizedDistance);
 
-                assertEquals(points.size() + 1, initialRoute.size());
+                // A cycle contains every point plus the repeated depot.
                 assertEquals(points.size() + 1, optimizedRoute.size());
 
-                assertSame(depot, initialRoute.get(0));
-                assertSame(depot, initialRoute.get(initialRoute.size() - 1));
-
+                // The route must start and end at the depot.
                 assertSame(depot, optimizedRoute.get(0));
                 assertSame(depot, optimizedRoute.get(optimizedRoute.size() - 1));
 
-                assertTrue(initialDistance > 0);
+                // Every delivery point must appear exactly once between the depots.
+                // Every delivery point must appear exactly once in the route.
+                assertEquals(points.size() + 1, optimizedRoute.size());
 
-                assertTrue(
-                                optimizedDistance <= initialDistance + 1e-9,
-                                "2-opt should not increase the route distance");
+                // The depot appears twice: at the beginning and at the end.
+                assertSame(depot, optimizedRoute.get(0));
+                assertSame(depot, optimizedRoute.get(optimizedRoute.size() - 1));
+
+                // Every customer must appear exactly once between the depot visits.
+                for (DeliveryPoint customer : points.subList(1, points.size())) {
+                        long occurrences = optimizedRoute.stream()
+                                        .filter(routePoint -> routePoint == customer)
+                                        .count();
+
+                        assertEquals(1, occurrences,
+                                        "Each customer must appear exactly once: "
+                                                        + customer.getName());
+                }
+
+                // No unexpected points should be present in the route.
+                assertEquals(points.size() + 1, optimizedRoute.size());
+
+                assertTrue(optimizedDistance > 0);
+                assertTrue(Double.isFinite(optimizedDistance));
         }
 }
