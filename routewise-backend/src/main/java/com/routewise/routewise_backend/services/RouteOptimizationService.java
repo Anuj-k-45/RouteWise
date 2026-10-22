@@ -55,10 +55,8 @@ public class RouteOptimizationService {
                                 optimizedRoute, matrix, points);
 
                 System.out.println("-------------------------------------------------------");
-                System.out.println("Using Held-Karp Hamiltonian Cycle Solver");
-                System.out.println("Original Route: " + originalRoute);
+                System.out.println("Using TSP Solver to optimize the route for the given delivery points: ");
                 System.out.println("Original Distance: " + originalDistance);
-                System.out.println("Optimized Route: " + optimizedRoute);
                 System.out.println("Optimized Distance: " + optimizedDistance);
                 System.out.println("-------------------------------------------------------");
 
